@@ -1,0 +1,321 @@
+''' 
+Author: Miao Cheng
+Email: chengmiao0808@gmail.com
+Description: README file for the virtual pocker casino backend. 
+'''
+
+DESIGN: 
+
+There are three classes: player, poker, table, which are defined and implemented 
+in player.py, poker.py, table.py respectively. 
+
+
+player: basic component of the poker casino game, which contains a player's info: 
+id, fund, bet_amount, current_hand. 
+Note that the id of player is assigned in the format of 'player%i', like 'player0', 
+'player1', 'player2', etc. Specifically, 'player0' is the id for the human player 
+in the game. This is set by default. 
+
+
+pocker: this class defines all the rules and methods related to pocker cards, which 
+includes the generation of 52 cards, the patterns and comparison rules for any hands 
+of five cards, and the method to randomly deal cards. 
+Specifically, the explanation of the patterns and comparison rules can be found at: 
+
+https://www.pokerstars.com/poker/games/rules/hand-rankings/
+
+
+table: the table class takes charge of a list of players seated at the table, a poker
+object and methods to find a player with specified id, delete a player with specified 
+id, add a new player, deal cards for the players, decide the winner during the game, 
+update and get funds of the current players. 
+Note that the table id is assigned in the format of 'table%i', like 'table0', 'table1', 
+'table2', etc. Specifically, 'table0' is the default table id where the human player 
+(player0) is seated. 
+
+
+All the interactions of the poker casino game is defined and implemented in game.py, 
+which is combined with the Flask framework. 
+
+The file game.py defines the Flask app, calls the methods in table.py to initialize the 
+list of tables and players at the beginning of the game, and implements the interactive 
+methods to add/remove a player, change the seat for the human player, trigger a hand at 
+any table in the casino, bet an amount during the game for the human player, and check 
+the latest seats and funds info of all the existing players at each table. 
+
+
+Some specific settings and rules: 
+
+0. At the beginning of the game, 4 table with 6 seats will be created, and a random 
+   number of 1~6 players (with initial fund = 500) will also be created in each table. 
+
+1. You (as the human player) can trigger a hand at any table with players >= 3. 
+
+2. You can add a new player to any table that is not full (the new player will be 
+   seated at the last place of the table). 
+
+3. You (as the human player) are initially seated at the first seat of 'table0' by 
+   default, but can change to any table that is not full during the game (you will 
+   be seated at the last seat of the new table). 
+
+4. You can remove any existing player in the casino by specifying its id, and if you 
+   remove yourself (as the human player 'player0'), you will quit the game. 
+
+5. The order of players seated at table matters during the game, the first player 
+   must bet $ 1~5, and the following players must bet $ 0~5 more than the bet amount 
+   of its predecessor. 
+
+6. During one hand of the game, if two players have exactly the same patterns and 
+   points of cards, the player who bet earlier will win. So there will be only one 
+   winner after one hand, who will get all the bet amounts. 
+
+7. Before starting one hand of game, any player who is running out of money will be 
+   removed automatically. 
+
+(More detailed info can be found in the comments for the code...)
+
+
+TESTS AND COMMANDS: 
+
+To test pocker.py, run test_poker.py: 
+
+   $ python test_poker.py
+
+
+To start the poker casino site, run: 
+
+   $ python game.py
+
+
+To enter the game, run: 
+
+   $ curl http://127.0.0.1:5000/tables
+
+This will return a list of tables with seated players and their current funds. 
+For example: 
+
+{
+  "table0": "player0: 500, player1: 500, player2: 500, player3: 500, player4: 500", 
+  "table1": "player6: 500, player7: 500", 
+  "table2": "player12: 500, player13: 500, player14: 500", 
+  "table3": "player18: 500, player19: 500"
+}
+
+
+To add a new player, for example, run: 
+
+   $ curl http://127.0.0.1:5000/update -d "add2=table1" -X POST
+
+This will add a new player to 'table1' and return: 
+
+{
+  "table0": "player0: 500, player1: 500, player2: 500, player3: 500, player4: 500", 
+  "table1": "player6: 500, player7: 500, player24: 500", 
+  "table2": "player12: 500, player13: 500, player14: 500", 
+  "table3": "player18: 500, player19: 500"
+}
+
+Note that if you input a wrong table id or the table is already full, the site will 
+return the corresponding error notificaton. 
+
+
+To remove an existing player, for example, run: 
+
+   $ curl http://127.0.0.1:5000/update -d "player=player14" -X DELETE
+
+This will remove the player 'player14' and return: 
+
+{
+  "table0": "player0: 500, player1: 500, player2: 500, player3: 500, player4: 500", 
+  "table1": "player6: 500, player7: 500, player24: 500", 
+  "table2": "player12: 500, player13: 500", 
+  "table3": "player18: 500, player19: 500"
+}
+
+
+To change the human player (player0) to another table, for example, run: 
+
+   $ curl http://127.0.0.1:5000/update -d "change2=table1" -X PUT
+
+This will change 'player0' to 'table1' and return: 
+
+{
+  "table0": "player1: 500, player2: 500, player3: 500, player4: 500", 
+  "table1": "player6: 500, player7: 500, player24: 500, player0: 500", 
+  "table2": "player12: 500, player13: 500", 
+  "table3": "player18: 500, player19: 500"
+}
+
+
+To play one hand now! For example, run: 
+
+   $ curl http://127.0.0.1:5000/play -d "table=table1" -X POST
+
+This will trigger a hand at 'table1' and return: 
+
+Your hand: A_spade, 7_spade, Q_diamond, Q_spade, Q_heart, other players bet: 
+player6: 3
+player7: 4
+player24: 5
+Waiting for you to bet (you have to bet $ 0~5 more than your predecessor's bet, 
+or if you are the first player, you have to bet $ 1~5)...
+
+You can see your own hand and the former players' bets. 
+
+
+Then you can bet (as the human player 'player0')! For example, run: 
+
+   $ curl http://127.0.0.1:5000/play -d "amount=6" -X PUT
+
+(Note that you must input a proper amount according to the rules shown before, or 
+  the site will return an error notification and you need to rebet...)
+
+This will bet $ 6 for 'player0' and return: 
+
+{
+  "current_funds": "player6: 497, player7: 496, player24: 495, player0: 512", 
+  "player0": "A_spade, 7_spade, Q_diamond, Q_spade, Q_heart", 
+  "player24": "3_spade, J_diamond, 6_diamond, A_diamond, K_club", 
+  "player6": "2_spade, 4_spade, 10_heart, 8_club, 7_club", 
+  "player7": "5_club, 9_diamond, J_heart, Q_club, 5_heart", 
+  "winner": "player0"
+}
+
+Just happen to win for this hand:D 
+Note that when a table is playing, you cannot add/remove a player at this table, 
+otherwise the site will return an error notification. 
+
+
+You can check for the latest overall info by running: 
+
+   $ curl http://127.0.0.1:5000/tables
+
+This will return: 
+
+{
+  "table0": "player1: 500, player2: 500, player3: 500, player4: 500", 
+  "table1": "player6: 497, player7: 496, player24: 495, player0: 512", 
+  "table2": "player12: 500, player13: 500", 
+  "table3": "player18: 500, player19: 500"
+}
+
+As you can see, the funds of players at 'table1' have been updated. 
+
+
+You can also trigger a hand at a table where no human is seated. For example, run: 
+
+   $ curl http://127.0.0.1:5000/play -d "table=table0" -X POST
+
+This will trigger a hand at 'table0' and return: 
+
+{
+  "current_funds": "player1: 497, player2: 523, player3: 492, player4: 488", 
+  "player1": "4_spade, 5_heart, 9_heart, 2_club, A_diamond", 
+  "player2": "3_spade, J_spade, 2_heart, J_club, K_diamond", 
+  "player3": "6_diamond, A_club, 10_heart, K_spade, J_heart", 
+  "player4": "Q_spade, 5_diamond, K_heart, 7_heart, 10_club", 
+  "winner": "player2"
+}
+
+As you see, the hand played at this table and its outcome are shown. 
+
+
+Also, check for the latest overall info: 
+
+   $ curl http://127.0.0.1:5000/tables
+
+This will return: 
+
+{
+  "table0": "player1: 497, player2: 523, player3: 492, player4: 488", 
+  "table1": "player6: 497, player7: 496, player24: 495, player0: 512", 
+  "table2": "player12: 500, player13: 500", 
+  "table3": "player18: 500, player19: 500"
+}
+
+The funds are updated correspondingly. 
+
+
+Note that if you want to trigger a hand at a table with players < 3, the site will 
+return an error notification, for example, run: 
+
+   $ curl http://127.0.0.1:5000/play -d "table=table2" -X POST
+
+This will return: 
+
+The number of players at table2 is not enough! 
+
+
+Then you may add one more player to this table by running: 
+
+   $ curl http://127.0.0.1:5000/update -d "add2=table2" -X POST
+
+This will return: 
+
+{
+  "table0": "player1: 497, player2: 523, player3: 492, player4: 488", 
+  "table1": "player6: 497, player7: 496, player24: 495, player0: 512", 
+  "table2": "player12: 500, player13: 500, player25: 500", 
+  "table3": "player18: 500, player19: 500"
+}
+
+
+Now you are able to trigger a hand at 'table2': 
+
+   $ curl http://127.0.0.1:5000/play -d "table=table2" -X POST
+
+This time, the site will return: 
+
+{
+  "current_funds": "player12: 496, player13: 512, player25: 492", 
+  "player12": "A_club, 9_diamond, 2_diamond, 7_spade, 8_heart", 
+  "player13": "3_heart, 10_diamond, 8_diamond, 6_club, 6_diamond", 
+  "player25": "9_heart, K_club, 3_diamond, Q_diamond, 7_heart", 
+  "winner": "player13"
+}
+
+
+And check for the latest overall info: 
+
+   $ curl http://127.0.0.1:5000/tables
+
+This will return: 
+
+{
+  "table0": "player1: 497, player2: 523, player3: 492, player4: 488", 
+  "table1": "player6: 497, player7: 496, player24: 495, player0: 512", 
+  "table2": "player12: 496, player13: 512, player25: 492", 
+  "table3": "player18: 500, player19: 500"
+}
+
+
+Lastly, if you (as the human player 'player0') remove yourself by running: 
+
+   $ curl http://127.0.0.1:5000/update -d "player=player0" -X DELETE
+
+This will return: 
+
+You've quitted the game!
+
+
+Then you may resume the game by running: 
+
+   $ curl http://127.0.0.1:5000/tables
+
+This will return a newly initialized list of tables and players: 
+
+{
+  "table0": "player0: 500", 
+  "table1": "player6: 500, player7: 500, player8: 500, player9: 500", 
+  "table2": "player12: 500, player13: 500", 
+  "table3": "player18: 500"
+}
+
+
+NOTE: 
+
+If you want to play this poker casino game correctly, you should follow the formats
+of the example commands. If your input is illegal, the site will handle the exceptions 
+gracefully and return the corresponding error notifications. Meanwhile, the status 
+of the ongoing game is maintained. So you can continue playing the game after giving 
+a wrong command without any side effects. 
